@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SweetTooth Production Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1e1e1e;
+    --border: #2a2a2a;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --cream: #f5f0e8;
+    --muted: #666;
+    --text: #e8e4dc;
+    --red: #e05c4a;
+    --green: #5aad7e;
+    --blue: #4a8fd4;
+    --purple: #9b7ecb;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  .header {
+    padding: 60px 60px 40px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    position: relative;
+  }
+
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 60px;
+    width: 120px;
+    height: 2px;
+    background: var(--gold);
+  }
+
+  .brand {
+    font-family: 'Playfair Display', serif;
+  }
+
+  .brand h1 {
+    font-size: 42px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    color: var(--gold-light);
+    line-height: 1;
+  }
+
+  .brand p {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  .header-meta {
+    text-align: right;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .header-meta strong {
+    color: var(--gold);
+    display: block;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .container { padding: 40px 60px 80px; }
+
+  /* KPI GRID */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 40px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .kpi {
+    background: var(--surface);
+    padding: 28px 24px;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.2s;
+  }
+
+  .kpi:hover { background: var(--surface2); }
+
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--gold);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+  }
+
+  .kpi:hover::before { transform: scaleX(1); }
+
+  .kpi-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .kpi-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--gold-light);
+    line-height: 1;
+  }
+
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .kpi-badge {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 2px;
+    margin-top: 8px;
+    letter-spacing: 1px;
+  }
+
+  .badge-warn { background: rgba(224,92,74,0.15); color: var(--red); border: 1px solid rgba(224,92,74,0.3); }
+  .badge-ok { background: rgba(90,173,126,0.15); color: var(--green); border: 1px solid rgba(90,173,126,0.3); }
+
+  /* SECTION HEADERS */
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 20px;
+    margin-top: 44px;
+  }
+
+  .section-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--cream);
+    letter-spacing: -0.5px;
+  }
+
+  .section-header span {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--gold);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* TWO COLUMN LAYOUT */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+  /* CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 28px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .card-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 20px;
+  }
+
+  /* BAR CHART */
+  .bar-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .bar-label {
+    font-size: 11px;
+    color: var(--text);
+    width: 200px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bar-label.mono {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 1px;
+    transition: width 1s ease;
+    background: var(--gold);
+  }
+
+  .bar-fill.blue { background: var(--blue); }
+  .bar-fill.green { background: var(--green); }
+  .bar-fill.red { background: var(--red); }
+  .bar-fill.purple { background: var(--purple); }
+
+  .bar-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    width: 90px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* LOCATION GRID */
+  .loc-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .loc-card {
+    background: var(--surface);
+    padding: 22px 20px;
+    position: relative;
+  }
+
+  .loc-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 12px;
+  }
+
+  .loc-runs {
+    font-family: 'Playfair Display', serif;
+    font-size: 38px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .loc-detail {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .loc-bar {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 3px;
+    transition: width 1.2s ease;
+  }
+
+  /* WEEKLY CHART */
+  .week-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 120px;
+    padding-top: 10px;
+  }
+
+  .week-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+
+  .week-bar {
+    width: 100%;
+    background: var(--gold);
+    border-radius: 2px 2px 0 0;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+    position: relative;
+  }
+
+  .week-bar:hover { opacity: 1; }
+
+  .week-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .week-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--gold);
+  }
+
+  /* DAY OF WEEK */
+  .dow-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+  }
+
+  .dow-cell {
+    text-align: center;
+  }
+
+  .dow-bar-wrap {
+    height: 80px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  .dow-bar {
+    width: 100%;
+    background: var(--gold);
+    border-radius: 2px 2px 0 0;
+    opacity: 0.75;
+  }
+
+  .dow-bar.highlight { background: var(--red); opacity: 1; }
+
+  .dow-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .dow-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text);
+    margin-top: 4px;
+  }
+
+  /* ANOMALY CARD */
+  .anomaly-card {
+    background: linear-gradient(135deg, #1e1212, #1e1616);
+    border: 1px solid rgba(224,92,74,0.3);
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .anomaly-card::before {
+    content: '⚠';
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    font-size: 48px;
+    opacity: 0.08;
+    color: var(--red);
+  }
+
+  .anomaly-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 16px;
+  }
+
+  .anomaly-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    color: var(--red);
+    font-weight: 700;
+  }
+
+  /* INGREDIENT TABLE */
+  .ing-table { width: 100%; }
+
+  .ing-row {
+    display: grid;
+    grid-template-columns: 1fr 80px 110px;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ing-row:last-child { border-bottom: none; }
+
+  .ing-row:first-child {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 10px;
+  }
+
+  .ing-name { font-size: 12px; color: var(--text); }
+  .ing-uses { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); text-align: right; }
+  .ing-cost { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--gold); text-align: right; }
+
+  /* ZERO COST ITEMS */
+  .zero-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .zero-item:last-child { border-bottom: none; }
+
+  .zero-name { font-size: 12px; }
+  .zero-runs {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--red);
+    background: rgba(224,92,74,0.1);
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+
+  /* OVERRUN TABLE */
+  .overrun-row {
+    display: grid;
+    grid-template-columns: 1fr 100px 100px 80px;
+    gap: 10px;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+
+  .overrun-row:last-child { border-bottom: none; }
+  .overrun-row.header {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .overrun-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--red);
+  }
+
+  .cost-mono {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* FOOTER */
+  .footer {
+    margin-top: 60px;
+    padding-top: 30px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .footer span { color: var(--gold); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .delay-1 { animation-delay: 0.1s; }
+  .delay-2 { animation-delay: 0.2s; }
+  .delay-3 { animation-delay: 0.3s; }
+  .delay-4 { animation-delay: 0.4s; }
+
+  @media (max-width: 1100px) {
+    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    .two-col, .three-col { grid-template-columns: 1fr; }
+    .loc-grid { grid-template-columns: repeat(2, 1fr); }
+    .header, .container { padding-left: 30px; padding-right: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">
+    <h1>SweetTooth</h1>
+    <p>Production Analytics Report &nbsp;·&nbsp; Jan–Feb 2026</p>
+  </div>
+  <div class="header-meta">
+    <strong>44 Production Days</strong>
+    01 Jan 2026 — 13 Feb 2026<br>
+    68 Source Files &nbsp;·&nbsp; 3,360 Records
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- KPI GRID -->
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">Total Runs</div>
+      <div class="kpi-value">3,360</div>
+      <div class="kpi-sub">76.4 avg per day</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Unique Products</div>
+      <div class="kpi-value">275</div>
+      <div class="kpi-sub">238 final · 37 WIP</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Unique Ingredients</div>
+      <div class="kpi-value">347</div>
+      <div class="kpi-sub">Avg 6 per run</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">True Production Cost</div>
+      <div class="kpi-value">₦9.3B</div>
+      <div class="kpi-sub">Excl. ₦135B anomaly</div>
+      <div class="kpi-badge badge-warn">⚠ Anomaly Detected</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Active Locations</div>
+      <div class="kpi-value">6</div>
+      <div class="kpi-sub">Kitchen · Pastry · Gelato · Till · CS · Concession</div>
+    </div>
+  </div>
+
+  <!-- LOCATIONS -->
+  <div class="section-header">
+    <h2>Production by Location</h2>
+    <span>Kitchen Operations</span>
+  </div>
+
+  <div class="loc-grid">
+    <div class="loc-card">
+      <div class="loc-name">Corner Store</div>
+      <div class="loc-runs">1,125</div>
+      <div class="loc-detail">64 unique products &nbsp;·&nbsp; ₦1.06B cost</div>
+      <div class="loc-bar" style="width:100%; background:var(--blue);"></div>
+    </div>
+    <div class="loc-card">
+      <div class="loc-name">Hot Kitchen</div>
+      <div class="loc-runs">1,115</div>
+      <div class="loc-detail">129 unique products &nbsp;·&nbsp; ₦4.35B clean cost</div>
+      <div class="loc-bar" style="width:99%; background:var(--red);"></div>
+    </div>
+    <div class="loc-card">
+      <div class="loc-name">Pastry</div>
+      <div class="loc-runs">952</div>
+      <div class="loc-detail">73 unique products &nbsp;·&nbsp; ₦722M cost</div>
+      <div class="loc-bar" style="width:85%; background:var(--gold);"></div>
+    </div>
+    <div class="loc-card">
+      <div class="loc-name">Till</div>
+      <div class="loc-runs">99</div>
+      <div class="loc-detail">45 unique products &nbsp;·&nbsp; ₦261K cost</div>
+      <div class="loc-bar" style="width:22%; background:var(--green);"></div>
+    </div>
+    <div class="loc-card">
+      <div class="loc-name">Gelato</div>
+      <div class="loc-runs">68</div>
+      <div class="loc-detail">30 unique products &nbsp;·&nbsp; ₦3.15B cost</div>
+      <div class="loc-bar" style="width:16%; background:var(--purple);"></div>
+    </div>
+    <div class="loc-card">
+      <div class="loc-name">Concession</div>
+      <div class="loc-runs">1</div>
+      <div class="loc-detail">1 unique product &nbsp;·&nbsp; ₦25K cost</div>
+      <div class="loc-bar" style="width:2%; background:var(--muted);"></div>
+    </div>
+  </div>
+
+  <!-- DAY OF WEEK + WEEKLY -->
+  <div class="section-header">
+    <h2>Production Rhythm</h2>
+    <span>Time Analysis</span>
+  </div>
+
+  <div class="two-col">
+    <div class="card delay-1">
+      <div class="card-title">Day of Week — Production Volume</div>
+      <div class="dow-grid">
+        <div class="dow-cell">
+          <div class="dow-bar-wrap"><div class="dow-bar" style="height:${(360/826)*80}px; height:35px;"></div></div>
+          <div class="dow-name">MON</div>
+          <div class="dow-count">360</div>
+        </div>
+        <div class="dow-cell">
+          <div class="dow-bar-wrap"><div class="dow-bar" style="height:42px;"></div></div>
+          <div class="dow-name">TUE</div>
+          <div class="dow-count">437</div>
+        </div>
+        <div class="dow-cell">
+          <div class="dow-bar-wrap"><div class="dow-bar" style="height:39px;"></div></div>
+          <div class="dow-name">WED</div>
+          <div class="dow-count">404</div>
+        </div>
+        <div class="dow-cell">
+          <div class="dow-bar-wrap"><div class="dow-bar" style="height:43px;"></div></div>
+          <div class="dow-name">THU</div>
+          <div class="dow-count">448</div>
+        </div>
+        <div class="dow-cell">
+          <div class="dow-bar-wrap"><div class="dow-bar" style="height:41px;"></div></div>
+          <div class="dow-name">FRI</div>
+          <div class="dow-count">429</div>
+        </div>
+        <div class="dow-cell">
+          <div class="dow-bar-wrap"><div class="dow-bar" style="height:44px;"></div></div>
+          <div class="dow-name">SAT</div>
+          <div class="dow-count">456</div>
+        </div>
+        <div class="dow-cell">
+          <div class="dow-bar-wrap"><div class="dow-bar highlight" style="height:80px;"></div></div>
+          <div class="dow-name">SUN</div>
+          <div class="dow-count" style="color:var(--red);">826</div>
+        </div>
+      </div>
+      <p style="font-size:11px; color:var(--muted); margin-top:16px;">Sunday is the peak production day — nearly <strong style="color:var(--red);">2× any other day</strong>. Likely linked to weekend prep batching.</p>
+    </div>
+
+    <div class="card delay-2">
+      <div class="card-title">Weekly Run Volume — Jan–Feb 2026</div>
+      <div class="week-chart">
+        <div class="week-col">
+          <div class="week-val">156</div>
+          <div class="week-bar" style="height:15px; opacity:0.5;"></div>
+          <div class="week-label">W00</div>
+        </div>
+        <div class="week-col">
+          <div class="week-val">390</div>
+          <div class="week-bar" style="height:38px;"></div>
+          <div class="week-label">W01</div>
+        </div>
+        <div class="week-col">
+          <div class="week-val">332</div>
+          <div class="week-bar" style="height:32px;"></div>
+          <div class="week-label">W02</div>
+        </div>
+        <div class="week-col">
+          <div class="week-val">389</div>
+          <div class="week-bar" style="height:38px;"></div>
+          <div class="week-label">W03</div>
+        </div>
+        <div class="week-col">
+          <div class="week-val" style="color:var(--gold-light); font-weight:600;">789</div>
+          <div class="week-bar" style="height:77px; background:var(--gold-light);"></div>
+          <div class="week-label">W04</div>
+        </div>
+        <div class="week-col">
+          <div class="week-val">734</div>
+          <div class="week-bar" style="height:72px;"></div>
+          <div class="week-label">W05</div>
+        </div>
+        <div class="week-col">
+          <div class="week-val">570</div>
+          <div class="week-bar" style="height:56px;"></div>
+          <div class="week-label">W06</div>
+        </div>
+      </div>
+      <p style="font-size:11px; color:var(--muted); margin-top:16px;">Sharp production ramp-up from W04 onwards — <strong style="color:var(--gold);">789 runs</strong> in week 4 vs 156 in partial W00. February shows sustained high output.</p>
+    </div>
+  </div>
+
+  <!-- TOP PRODUCTS -->
+  <div class="section-header">
+    <h2>Most Produced Items</h2>
+    <span>Frequency & Cost</span>
+  </div>
+
+  <div class="two-col">
+    <div class="card delay-1">
+      <div class="card-title">Top 15 — By Production Run Frequency</div>
+      <div>
+        <div class="bar-item"><span class="bar-label">Cappuccino Coffee</span><div class="bar-track"><div class="bar-fill blue" style="width:100%"></div></div><span class="bar-val">153 runs</span></div>
+        <div class="bar-item"><span class="bar-label">Spanish Latte</span><div class="bar-track"><div class="bar-fill blue" style="width:88%"></div></div><span class="bar-val">134 runs</span></div>
+        <div class="bar-item"><span class="bar-label">House Special Brew</span><div class="bar-track"><div class="bar-fill blue" style="width:85%"></div></div><span class="bar-val">130 runs</span></div>
+        <div class="bar-item"><span class="bar-label">Chicken Wrap</span><div class="bar-track"><div class="bar-fill green" style="width:48%"></div></div><span class="bar-val">73 runs</span></div>
+        <div class="bar-item"><span class="bar-label">Jambalaya Rice</span><div class="bar-track"><div class="bar-fill green" style="width:46%"></div></div><span class="bar-val">71 runs</span></div>
+        <div class="bar-item"><span class="bar-label">Long Black/Americano</span><div class="bar-track"><div class="bar-fill blue" style="width:42%"></div></div><span class="bar-val">64 runs</span></div>
+        <div class="bar-item"><span class="bar-label">Single Espresso Coffee</span><div class="bar-track"><div class="bar-fill red" style="width:40%"></div></div><span class="bar-val">61 runs ⚠</span></div>
+        <div class="bar-item"><span class="bar-label">Cornerstore's Juicy Burger</span><div class="bar-track"><div class="bar-fill red" style="width:33%"></div></div><span class="bar-val">51 runs ⚠</span></div>
+        <div class="bar-item"><span class="bar-label">Chocolate Oreo Doughnut</span><div class="bar-track"><div class="bar-fill" style="width:31%"></div></div><span class="bar-val">47 runs</span></div>
+        <div class="bar-item"><span class="bar-label">Vanilla Milkshake</span><div class="bar-track"><div class="bar-fill" style="width:31%"></div></div><span class="bar-val">47 runs</span></div>
+        <div class="bar-item"><span class="bar-label">Spicy Wings</span><div class="bar-track"><div class="bar-fill green" style="width:31%"></div></div><span class="bar-val">47 runs</span></div>
+        <div class="bar-item"><span class="bar-label">Spicy Quarter Grilled Chicken</span><div class="bar-track"><div class="bar-fill green" style="width:30%"></div></div><span class="bar-val">46 runs</span></div>
+        <div class="bar-item"><span class="bar-label">Frothy Top Chocolate</span><div class="bar-track"><div class="bar-fill blue" style="width:29%"></div></div><span class="bar-val">45 runs</span></div>
+        <div class="bar-item"><span class="bar-label">Coconut Doughnut</span><div class="bar-track"><div class="bar-fill" style="width:29%"></div></div><span class="bar-val">44 runs</span></div>
+        <div class="bar-item"><span class="bar-label">Strawberry Jam Doughnut</span><div class="bar-track"><div class="bar-fill" style="width:28%"></div></div><span class="bar-val">43 runs</span></div>
+      </div>
+      <p style="font-size:11px; color:var(--muted); margin-top:14px;"><span style="color:var(--red);">⚠ Red items</span> are produced regularly but have no products/recipes record in the database.</p>
+    </div>
+
+    <div class="card delay-2">
+      <div class="card-title">Top 12 — By Total Production Cost</div>
+      <div>
+        <div class="bar-item"><span class="bar-label">Spicy Wings w/ French Fries</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><span class="bar-val">₦697.5M</span></div>
+        <div class="bar-item"><span class="bar-label">Jambalaya Rice</span><div class="bar-track"><div class="bar-fill green" style="width:49%"></div></div><span class="bar-val">₦341.8M</span></div>
+        <div class="bar-item"><span class="bar-label">House Special Brew</span><div class="bar-track"><div class="bar-fill blue" style="width:41%"></div></div><span class="bar-val">₦288.5M</span></div>
+        <div class="bar-item"><span class="bar-label">Vanilla Gelato</span><div class="bar-track"><div class="bar-fill red" style="width:35%"></div></div><span class="bar-val">₦241.0M ⚠</span></div>
+        <div class="bar-item"><span class="bar-label">Cookies & Cream Gelato</span><div class="bar-track"><div class="bar-fill red" style="width:34%"></div></div><span class="bar-val">₦240.4M ⚠</span></div>
+        <div class="bar-item"><span class="bar-label">Stracciatella Gelato</span><div class="bar-track"><div class="bar-fill red" style="width:34%"></div></div><span class="bar-val">₦240.2M ⚠</span></div>
+        <div class="bar-item"><span class="bar-label">Spicy Q. Grilled Chkn & Chips</span><div class="bar-track"><div class="bar-fill red" style="width:34%"></div></div><span class="bar-val">₦235.7M ⚠</span></div>
+        <div class="bar-item"><span class="bar-label">Cornerstore's Juicy Burger</span><div class="bar-track"><div class="bar-fill red" style="width:16%"></div></div><span class="bar-val">₦113.7M ⚠</span></div>
+        <div class="bar-item"><span class="bar-label">Cornerstore's Club Sandwich</span><div class="bar-track"><div class="bar-fill red" style="width:9%"></div></div><span class="bar-val">₦61.9M ⚠</span></div>
+        <div class="bar-item"><span class="bar-label">Long Black/Americano</span><div class="bar-track"><div class="bar-fill blue" style="width:5%"></div></div><span class="bar-val">₦31.8M</span></div>
+        <div class="bar-item"><span class="bar-label">Nutella Banana Bread</span><div class="bar-track"><div class="bar-fill" style="width:7%"></div></div><span class="bar-val">₦46.3M</span></div>
+        <div class="bar-item"><span class="bar-label">Strawberry Jam Doughnut</span><div class="bar-track"><div class="bar-fill" style="width:5%"></div></div><span class="bar-val">₦34.2M</span></div>
+      </div>
+      <p style="font-size:11px; color:var(--muted); margin-top:14px;"><span style="color:var(--red);">⚠ Red items</span> = high-cost production with no formal product/recipe record.</p>
+    </div>
+  </div>
+
+  <!-- INGREDIENTS -->
+  <div class="section-header">
+    <h2>Ingredient Analysis</h2>
+    <span>Supply Intelligence</span>
+  </div>
+
+  <div class="two-col">
+    <div class="card delay-1">
+      <div class="card-title">Most Frequently Used Ingredients</div>
+      <div>
+        <div class="bar-item"><span class="bar-label mono">SALT</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><span class="bar-val">1,141 uses</span></div>
+        <div class="bar-item"><span class="bar-label mono">VEGETABLE OIL</span><div class="bar-track"><div class="bar-fill" style="width:94%"></div></div><span class="bar-val">1,071 uses</span></div>
+        <div class="bar-item"><span class="bar-label mono">GRANULATED SUGAR</span><div class="bar-track"><div class="bar-fill" style="width:87%"></div></div><span class="bar-val">994 uses</span></div>
+        <div class="bar-item"><span class="bar-label mono">WHITE FLOUR</span><div class="bar-track"><div class="bar-fill" style="width:81%"></div></div><span class="bar-val">923 uses</span></div>
+        <div class="bar-item"><span class="bar-label mono">UHT MILK</span><div class="bar-track"><div class="bar-fill" style="width:67%"></div></div><span class="bar-val">765 uses</span></div>
+        <div class="bar-item"><span class="bar-label mono">UNSALTED BUTTER</span><div class="bar-track"><div class="bar-fill" style="width:60%"></div></div><span class="bar-val">685 uses</span></div>
+        <div class="bar-item"><span class="bar-label mono">YEAST</span><div class="bar-track"><div class="bar-fill" style="width:54%"></div></div><span class="bar-val">619 uses</span></div>
+        <div class="bar-item"><span class="bar-label mono">COFFEE BEAN CAFFEINATED</span><div class="bar-track"><div class="bar-fill blue" style="width:50%"></div></div><span class="bar-val">573 uses</span></div>
+        <div class="bar-item"><span class="bar-label mono">POWDERED MILK</span><div class="bar-track"><div class="bar-fill" style="width:49%"></div></div><span class="bar-val">558 uses</span></div>
+        <div class="bar-item"><span class="bar-label mono">C-WAY WATER</span><div class="bar-track"><div class="bar-fill blue" style="width:44%"></div></div><span class="bar-val">503 uses</span></div>
+        <div class="bar-item"><span class="bar-label mono">COFFEE CUP (BRANDED)</span><div class="bar-track"><div class="bar-fill blue" style="width:42%"></div></div><span class="bar-val">476 uses</span></div>
+        <div class="bar-item"><span class="bar-label mono">EGG PRODUCTION (WIP)</span><div class="bar-track"><div class="bar-fill" style="width:40%"></div></div><span class="bar-val">454 uses</span></div>
+      </div>
+    </div>
+
+    <div class="card delay-2">
+      <div class="card-title">Highest Cost Ingredients (by total spend)</div>
+      <div class="ing-table">
+        <div class="ing-row">
+          <span>Ingredient</span>
+          <span class="ing-uses">Uses</span>
+          <span class="ing-cost">Total Cost</span>
+        </div>
+        <div class="ing-row">
+          <span class="ing-name" style="color:var(--red);">CHICKEN LAP <span style="font-size:10px;">(⚠ anomaly)</span></span>
+          <span class="ing-uses">10</span>
+          <span class="ing-cost" style="color:var(--red);">₦135.2B</span>
+        </div>
+        <div class="ing-row">
+          <span class="ing-name">SHRIMP</span>
+          <span class="ing-uses">1</span>
+          <span class="ing-cost">₦1.08B</span>
+        </div>
+        <div class="ing-row">
+          <span class="ing-name">CHICKEN WING</span>
+          <span class="ing-uses">30</span>
+          <span class="ing-cost">₦792.2M</span>
+        </div>
+        <div class="ing-row">
+          <span class="ing-name">GOAT MINCED MEAT (WIP)</span>
+          <span class="ing-uses">1</span>
+          <span class="ing-cost">₦550.0M</span>
+        </div>
+        <div class="ing-row">
+          <span class="ing-name">DANICA COOKING CREAM</span>
+          <span class="ing-uses">11</span>
+          <span class="ing-cost">₦313.9M</span>
+        </div>
+        <div class="ing-row">
+          <span class="ing-name">GOLDEN SELLA BASMATI RICE</span>
+          <span class="ing-uses">78</span>
+          <span class="ing-cost">₦296.7M</span>
+        </div>
+        <div class="ing-row">
+          <span class="ing-name">CHICKEN FILLET</span>
+          <span class="ing-uses">9</span>
+          <span class="ing-cost">₦274.3M</span>
+        </div>
+        <div class="ing-row">
+          <span class="ing-name">TOMATO KETCHUP</span>
+          <span class="ing-uses">231</span>
+          <span class="ing-cost">₦238.7M</span>
+        </div>
+        <div class="ing-row">
+          <span class="ing-name">BEEF FILLET</span>
+          <span class="ing-uses">14</span>
+          <span class="ing-cost">₦235.6M</span>
+        </div>
+        <div class="ing-row">
+          <span class="ing-name">C-WAY WATER</span>
+          <span class="ing-uses">503</span>
+          <span class="ing-cost">₦176.3M</span>
+        </div>
+        <div class="ing-row">
+          <span class="ing-name">GINGER</span>
+          <span class="ing-uses">136</span>
+          <span class="ing-cost">₦176.5M</span>
+        </div>
+        <div class="ing-row">
+          <span class="ing-name">TEQUILA</span>
+          <span class="ing-uses">58</span>
+          <span class="ing-cost">₦109.7M</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANOMALY + COST OVERRUNS -->
+  <div class="section-header">
+    <h2>Data Quality & Cost Alerts</h2>
+    <span>Flags & Anomalies</span>
+  </div>
+
+  <div class="three-col">
+    <div class="anomaly-card">
+      <div class="anomaly-title">Critical Cost Anomaly</div>
+      <div class="anomaly-value">₦135B</div>
+      <p style="font-size:12px; color:#c48; margin-top:10px; line-height:1.6;">
+        A single <strong>MARINATED CHICKEN LAP (WIP)</strong> production record shows ₦135,101,167,950 — distorting all HOT KITCHEN totals. This is almost certainly a <strong>unit entry error</strong> (grams entered as naira). Requires immediate correction.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Zero-Cost Products (Produced 3+ Times)</div>
+      <div class="zero-item">
+        <span class="zero-name">Single Espresso Coffee</span>
+        <span class="zero-runs">61 runs</span>
+      </div>
+      <div class="zero-item">
+        <span class="zero-name">Double Espresso Coffee</span>
+        <span class="zero-runs">30 runs</span>
+      </div>
+      <div class="zero-item">
+        <span class="zero-name">Omelette</span>
+        <span class="zero-runs">20 runs</span>
+      </div>
+      <div class="zero-item">
+        <span class="zero-name">Red Velvet Marble</span>
+        <span class="zero-runs">14 runs</span>
+      </div>
+      <div class="zero-item">
+        <span class="zero-name">Almond Croissant</span>
+        <span class="zero-runs">10 runs</span>
+      </div>
+      <div class="zero-item">
+        <span class="zero-name">Affogato Coffee</span>
+        <span class="zero-runs">8 runs</span>
+      </div>
+      <div class="zero-item">
+        <span class="zero-name">Mini Croissant</span>
+        <span class="zero-runs">4 runs</span>
+      </div>
+      <p style="font-size:11px; color:var(--muted); margin-top:12px;">Ingredients cost ₦0 across all runs — ingredient costs missing from system.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Actual Cost Overruns vs Recipe Estimate</div>
+      <div class="overrun-row header">
+        <span>Product</span>
+        <span>Recipe</span>
+        <span>Actual</span>
+        <span>Overrun</span>
+      </div>
+      <div class="overrun-row">
+        <span>Strawberry Milkshake</span>
+        <span class="cost-mono">₦7,312</span>
+        <span class="cost-mono">₦157,258</span>
+        <span class="overrun-pct">+2,051%</span>
+      </div>
+      <div class="overrun-row">
+        <span>Mocha Coffee</span>
+        <span class="cost-mono">₦6,901</span>
+        <span class="cost-mono">₦118,822</span>
+        <span class="overrun-pct">+1,622%</span>
+      </div>
+      <div class="overrun-row">
+        <span>Caramel Hot Choc.</span>
+        <span class="cost-mono">₦29,515</span>
+        <span class="cost-mono">₦238,728</span>
+        <span class="overrun-pct">+709%</span>
+      </div>
+      <div class="overrun-row">
+        <span>White Forest Slice</span>
+        <span class="cost-mono">₦72,647</span>
+        <span class="cost-mono">₦308,834</span>
+        <span class="overrun-pct">+326%</span>
+      </div>
+      <div class="overrun-row">
+        <span>Black Forest Slice</span>
+        <span class="cost-mono">₦93,392</span>
+        <span class="cost-mono">₦371,334</span>
+        <span class="overrun-pct">+298%</span>
+      </div>
+      <div class="overrun-row">
+        <span>Latte Coffee</span>
+        <span class="cost-mono">₦31,800</span>
+        <span class="cost-mono">₦91,523</span>
+        <span class="overrun-pct">+188%</span>
+      </div>
+      <p style="font-size:11px; color:var(--muted); margin-top:12px;">These items are costing significantly more to produce than the recipe budgets.</p>
+    </div>
+  </div>
+
+  <!-- DATA GAPS SUMMARY -->
+  <div class="section-header">
+    <h2>Database Gap Summary</h2>
+    <span>Catalogue vs Reality</span>
+  </div>
+
+  <div class="card delay-1">
+    <div class="card-title">Products Being Produced But Not Formally Registered</div>
+    <div style="display:grid; grid-template-columns: repeat(4,1fr); gap:1px; background:var(--border); border:1px solid var(--border); margin-bottom:20px;">
+      <div style="background:var(--surface2); padding:20px;">
+        <div style="font-family:'DM Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:8px;">Final Products</div>
+        <div style="font-family:'Playfair Display',serif; font-size:32px; color:var(--red);">143</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:4px;">Being produced & sold with no products or recipe record</div>
+      </div>
+      <div style="background:var(--surface2); padding:20px;">
+        <div style="font-family:'DM Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:8px;">WIP Sub-items</div>
+        <div style="font-family:'Playfair Display',serif; font-size:32px; color:var(--gold);">37</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:4px;">Intermediary WIP items with no formal table — normal but worth formalising</div>
+      </div>
+      <div style="background:var(--surface2); padding:20px;">
+        <div style="font-family:'DM Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:8px;">Name Mismatches</div>
+        <div style="font-family:'Playfair Display',serif; font-size:32px; color:var(--purple);">25+</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:4px;">Gelato flavours called "FLAVOR" in DB but "GELATO" in production logs</div>
+      </div>
+      <div style="background:var(--surface2); padding:20px;">
+        <div style="font-family:'DM Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:8px;">Never Produced</div>
+        <div style="font-family:'Playfair Display',serif; font-size:32px; color:var(--muted);">64</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:4px;">Products in the SQL catalogue with zero production logs in Jan–Feb 2026</div>
+      </div>
+    </div>
+    <p style="font-size:12px; color:var(--muted); line-height:1.8;">
+      Notable unregistered high-volume items include: <strong style="color:var(--text);">Single Espresso Coffee</strong> (61 runs, ₦0 cost recorded), 
+      <strong style="color:var(--text);">Cornerstore's Juicy Burger</strong> (51 runs, ₦113.7M cost), 
+      <strong style="color:var(--text);">Vanilla Gelato</strong> (13 runs, ₦241M cost), and 
+      <strong style="color:var(--text);">Tequila Shots</strong> (19 runs, ₦67.2M). 
+      These items are generating real costs and presumably real revenue, but exist entirely outside the formal product catalogue.
+    </p>
+  </div>
+
+  <div class="footer">
+    <div>SweetTooth &nbsp;·&nbsp; <span>Production Analytics</span> &nbsp;·&nbsp; gocraybf_sweettooth</div>
+    <div>Jan 01 – Feb 13, 2026 &nbsp;·&nbsp; <span>3,360 records across 68 files</span></div>
+  </div>
+
+</div>
+</body>
+</html>
